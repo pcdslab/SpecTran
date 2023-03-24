@@ -20,13 +20,7 @@ class AnnotatedSpectrumIndex(hdf5.AnnotatedSpectrumIndex):
         self.start_spec_ix = start_spec_ix
         self.end_spec_ix = end_spec_ix
         self.max_spectra_per_peptide = max_spectra_per_peptide
-        # super().__init__(
-        #     index_path=index_path,
-        #     ms_data_files=ms_data_files,
-        #     ms_level=ms_level,
-        #     valid_charge=valid_charge,
-        #     overwrite=overwrite,
-        # )
+
         super().__init__(
             index_path,
             ms_data_files,

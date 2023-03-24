@@ -11,9 +11,12 @@ import pytorch_lightning as pl
 from casanovo.data.datasets import AnnotatedSpectrumDataset
 from hdf5_with_filtering import AnnotatedSpectrumIndex
 
-class TokenizerDataModule(pl.LightningDataModule):
+class SpecBertDataModule(pl.LightningDataModule):
     def __init__(
         self,
+        vocabulary,
+        tokenizer, 
+        masker,
         data_index: AnnotatedSpectrumIndex,
         batch_size: int = 128,
         n_peaks: Optional[int] = 150,
@@ -38,6 +41,9 @@ class TokenizerDataModule(pl.LightningDataModule):
         self.rng = np.random.default_rng(random_seed)
         self.train_dataset = None
         self.valid_dataset = None
+        self.tokenizer = tokenizer
+        self.vocabulary = vocabulary
+        self.masker = masker
         self.train_ratio = train_ratio
 
     def setup(self) -> None:
@@ -49,6 +55,7 @@ class TokenizerDataModule(pl.LightningDataModule):
             min_intensity=self.min_intensity,
             remove_precursor_tol=self.remove_precursor_tol,
         )
+
         dataset = make_dataset(self.data_index, random_state=self.rng)
         gen = torch.Generator().manual_seed(self.random_seed)
         self.train_dataset, self.valid_dataset = random_split(dataset, [self.train_ratio, 1 - self.train_ratio], generator=gen)
@@ -70,10 +77,10 @@ class TokenizerDataModule(pl.LightningDataModule):
         return torch.utils.data.DataLoader(
             dataset,
             batch_size=self.batch_size,
-            collate_fn=prepare_batch,
+            collate_fn=functools.partial(prepare_batch, tokenizer=self.tokenizer, masker=self.masker),
             pin_memory=True,
             num_workers=self.n_workers,
-        )    
+        )            
 
     def train_dataloader(self) -> torch.utils.data.DataLoader:
         """Get the training DataLoader."""
@@ -81,40 +88,32 @@ class TokenizerDataModule(pl.LightningDataModule):
 
     def val_dataloader(self) -> torch.utils.data.DataLoader:
         """Get the validation DataLoader."""
-        return self._make_loader(self.valid_dataset)  
+        return self._make_loader(self.valid_dataset)
 
-    
 def prepare_batch(
-    batch: List[Tuple[torch.Tensor, float, int, str]]
-) -> Tuple[torch.Tensor, torch.Tensor, np.ndarray]:
-    """
-    Collate MS/MS spectra into a batch.
-    The MS/MS spectra will be padded so that they fit nicely as a tensor.
-    However, the padded elements are ignored during the subsequent steps.
-    Parameters
-    ----------
-    batch : List[Tuple[torch.Tensor, float, int, str]]
-        A batch of data from an AnnotatedSpectrumDataset, consisting of for each
-        spectrum (i) a tensor with the m/z and intensity peak values, (ii), the
-        precursor m/z, (iii) the precursor charge, (iv) the spectrum identifier.
-    Returns
-    -------
-    spectra : torch.Tensor of shape (batch_size, n_peaks, 2)
-        The padded mass spectra tensor with the m/z and intensity peak values
-        for each spectrum.
-    precursors : torch.Tensor of shape (batch_size, 3)
-        A tensor with the precursor neutral mass, precursor charge, and
-        precursor m/z.
-    spectrum_ids : np.ndarray
-        The spectrum identifiers (during de novo sequencing) or peptide
-        sequences (during training).
-    """
+    batch: List[Tuple[torch.Tensor, float, int, str]],
+    tokenizer,
+    masker
+) -> Tuple[torch.Tensor, torch.Tensor]:
+
     spectra, precursor_mzs, precursor_charges, spectrum_ids = list(zip(*batch))
-    spectra = torch.nn.utils.rnn.pad_sequence(spectra, batch_first=True)
-    precursor_mzs = torch.tensor(precursor_mzs)
-    precursor_charges = torch.tensor(precursor_charges)
-    precursor_masses = (precursor_mzs - 1.007276) * precursor_charges
-    precursors = torch.vstack(
-        [precursor_masses, precursor_charges, precursor_mzs]
-    ).T.float()
-    return spectra, precursors, np.asarray(spectrum_ids)
+
+    # calculate the mean and std of all intensities in the batch, to use for normalization in the tokenizer
+    all_intensities_in_batch = []
+    for spectrum in spectra:
+        for peak in spectrum:
+            intensity = peak[1]
+            all_intensities_in_batch.append(intensity)
+    intensity_stdev = np.std(all_intensities_in_batch)
+    intensity_mean = np.mean(all_intensities_in_batch)
+
+    tokenized_spectra = tokenizer.tokenize_batch(spectra, intensity_mean, intensity_stdev)
+
+    # tokenized spectra shape: torch.Size([batch_size, sequence_length, 3]) (batch_size spectra, sequence_length peaks, [tokenIx, I1, I2]) 
+    # as many I values as max token length; unused I values are "padded" with 0s
+    # the overall sequence is padded to sequence_length using vocab.pad_token (padding with 0 is invalid since 0 is a real mz token index)
+    
+    # labels: each spectra has a list of labels (mz-intensity "groups", all must be predicted)
+    masked_tokenized_spectra, mask_labels = masker.mask_batch(tokenized_spectra)
+
+    return masked_tokenized_spectra, mask_labels
