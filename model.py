@@ -68,7 +68,7 @@ class SpecBERT(pl.LightningModule):
 
                 index_in_spectrum = peak_label[0].int()
 
-                if index_in_spectrum == self.vocab.pad_token.token_index:
+                if index_in_spectrum == self.vocab.pad_token.token_index and k > 0:
                     # ignore padding tokens
                     continue
 

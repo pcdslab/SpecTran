@@ -54,6 +54,26 @@ class SpecBERTUniversalComputation(pl.LightningModule):
         self.lr = lr
         self.weight_decay = weight_decay
 
+    def forward(self, batch, batch_idx):
+        masked_spectra = batch[0]
+
+        mz_tokens = masked_spectra[:, :, 0].int()
+        intensities = masked_spectra[:, :, 1:]
+
+        embedding = self.input_layer(mz_tokens) + self.intensity_layer(intensities)
+
+        # true for peaks that are not padding
+        attention_mask = ~(masked_spectra == self.vocab.pad_token.token_index)[:,:,0]
+
+        transformer_output = self.pretrained_model(inputs_embeds=embedding, encoder_attention_mask=attention_mask).last_hidden_state
+
+        batch_size, sequence_length, embedding_size = transformer_output.shape
+
+        mz_predictions = self.output_layer(transformer_output)
+
+        return mz_predictions
+
+
     def training_step(self, batch, batch_idx, should_log=True):
         masked_spectra = batch[0] # 32, 108, 3
         mask_labels = batch[1] # 32, 16, 4
@@ -69,7 +89,7 @@ class SpecBERTUniversalComputation(pl.LightningModule):
 
                 index_in_spectrum = peak_label[0].int()
 
-                if index_in_spectrum == self.vocab.pad_token.token_index:
+                if index_in_spectrum == self.vocab.pad_token.token_index and k > 0:
                     # ignore padding tokens
                     continue
 
@@ -124,7 +144,9 @@ class SpecBERTUniversalComputation(pl.LightningModule):
             optimizer, warmup=self.warmup_iters, max_iters=self.max_iters
         )
         return [optimizer], {"scheduler": lr_scheduler, "interval": "step"}
-
+    
+def calculate_percent_correct(masked_spectra, mz_predictions, masked_mz_labels):
+    return None # TODO
 
 # from Casanovo (https://github.com/Noble-Lab/casanovo/blob/main/casanovo/denovo/model.py)
 class CosineWarmupScheduler(torch.optim.lr_scheduler._LRScheduler):

@@ -42,6 +42,7 @@ class Masker:
         # select the indices to mask in the spectrum from the non-padding indices
         indices_to_mask = torch.randperm(real_token_indices.size(0))[:num_peaks_to_mask]
         indices_to_mask = indices_to_mask.view(len(indices_to_mask), 1).long()
+        indices_to_mask, _ = torch.sort(indices_to_mask, 0) # for padding purposes, if we mask the 0th index it needs to be first element (since padding can also be 0)
 
         labels = []
 
