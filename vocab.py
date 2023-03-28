@@ -51,31 +51,8 @@ class BasicSpectraVocab:
     # Load the vocabulary from the file. Each line of the vocabulary must be a token (a single m/z value or a pair) and its frequency.
     # This assumes that the vocabulary file is sorted from most to least frequent 
     def load_from_file(self, filename):
-        with open(filename, "r") as inf:
-            lines = inf.readlines()
+        current_ix = 0
 
-            current_ix = 0
-            for line in lines:
-                splitLine = line.replace("\n", "")
-                splitLine = splitLine.replace(")", "")
-                splitLine = splitLine.replace("(", "")
-                splitLine = splitLine.replace(" ", "")
-                splitLine = splitLine.split(",")
-
-                if len(splitLine) == 2:
-                    # single token (mz, frequency)
-                    freq = int(splitLine[1])
-                    mzs = [splitLine[0]]
-                else:
-                    # pair token, ((mz1, mz2), frequency)
-                    freq = int(splitLine[2])
-                    mzs = [splitLine[0], splitLine[1]]
-
-                new_token = VocabToken(mzs=mzs, token_index=current_ix, priority=freq)        
-                self._add_token(new_token, isSpecial=False)
-                current_ix += 1
-
-        # add the special tokens, which are considered to have the lowest frquency
         special_tokens = ['<pad>', '<mask>', '<unk>']
 
         first_special_index = current_ix
@@ -96,7 +73,31 @@ class BasicSpectraVocab:
             if token == '<pad>':
                 self.pad_token = token_to_add      
 
-            self._add_token(token_to_add, isSpecial=True)      
+            self._add_token(token_to_add, isSpecial=True)  
+            current_ix += 1
+
+        with open(filename, "r") as inf:
+            lines = inf.readlines()
+
+            for line in lines:
+                splitLine = line.replace("\n", "")
+                splitLine = splitLine.replace(")", "")
+                splitLine = splitLine.replace("(", "")
+                splitLine = splitLine.replace(" ", "")
+                splitLine = splitLine.split(",")
+
+                if len(splitLine) == 2:
+                    # single token (mz, frequency)
+                    freq = int(splitLine[1])
+                    mzs = [splitLine[0]]
+                else:
+                    # pair token, ((mz1, mz2), frequency)
+                    freq = int(splitLine[2])
+                    mzs = [splitLine[0], splitLine[1]]
+
+                new_token = VocabToken(mzs=mzs, token_index=current_ix, priority=freq)        
+                self._add_token(new_token, isSpecial=False)
+                current_ix += 1   
 
     def _add_token(self, vocabToken, isSpecial):
         self.all_tokens.append(vocabToken)
@@ -115,5 +116,13 @@ class BasicSpectraVocab:
         return self.mask_token    
 
     # When choosing a random token in the masking process, we ensure that we use a token with the same length (number of m/z values)
-    def get_random_token(self, token_length):   
-        return random.choice(self.tokens_by_length[token_length]) 
+    def get_random_token(self, token_length): 
+        # print("in vocab, attempting to get token of length: ", token_length)  
+
+        # possible_tokens = self.tokens_by_length[token_length]
+
+        # if len(possible_tokens) == 0:
+        #     print("no tokens for length: ", token_length)  
+        #     print("keys: ", self.tokens_by_length.keys())
+
+        return random.choice(self.tokens_by_length[token_length])

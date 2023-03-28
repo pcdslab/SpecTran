@@ -33,7 +33,7 @@ class Masker:
     # spec: torch.tensor of shape (peak_count, 1 + max_token_length)
     def mask_single(self, spec): 
         # find the indices of non-padding token values
-        mz_col = spec[:, 0]
+        mz_col = spec[:, 0].int()
         real_token_indices = torch.nonzero(mz_col != self.vocab.pad_token.token_index)   # tensor of shape (non-padding-token-count, 1), containing every index in spec that is not padding
 
         # make sure we mask at least one peak
@@ -57,9 +57,9 @@ class Masker:
                 # replace with a random token
 
                 # the number of real peaks in the token to mask - we only replace a token with a token of the same size
-                original_token_length = len(torch.nonzero(original_peak)) - 1
+                original_token_length = len(torch.nonzero(original_peak[1:]))
 
-                # get a random token of the same length as the original
+                # get a random token of the same length as the original                
                 replacement_token = self.vocab.get_random_token(original_token_length)
                 spec[index][0] = replacement_token.token_index
 
@@ -68,7 +68,7 @@ class Masker:
                     spec[index][k] = np_rand.default_rng().normal(0, 1)
             elif random_value < self.mask_probability:
                 # replace with the mask token
-                original_token_length = len(torch.nonzero(original_peak)) - 1
+                original_token_length = len(torch.nonzero(original_peak[1:]))
 
                 replacement_token = self.vocab.get_mask_token()
 

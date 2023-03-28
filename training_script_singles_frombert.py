@@ -8,7 +8,7 @@ import numpy as np
 import os
 import json
 
-import model
+import model_from_pretrained
 import pytorch_lightning as pl
 
 from pytorch_lightning import Trainer, seed_everything
@@ -21,11 +21,11 @@ from glob import glob
 train_filenames = glob(os.path.join('/disk/dragon-storage/homes/seber007/data/spectra/massive-kb/v2_hcd_only', '*'))
 
 # for pairs first
-vocab = vocab.BasicSpectraVocab(2)    
-vocab.load_from_file("/disk/dragon-storage/homes/seber007/pair-tokens-mar22.txt") # todo save vocab to that file
+vocab = vocab.BasicSpectraVocab(1)    
+vocab.load_from_file("/disk/dragon-storage/homes/seber007/single-tokens-mar22.txt") # todo save vocab to that file
 
 
-tokenizer1 = tokenizer.SpectraTokenizer(vocab, 2, "1.0")
+tokenizer1 = tokenizer.SpectraTokenizer(vocab, 1, "1.0")
 masker1 = masker.Masker(vocab, 0.15, 0.8, 0.1)
 
 tmp_dir = tempfile.TemporaryDirectory()
@@ -74,13 +74,13 @@ callbacks = [
     )
 ]
 
-model1 = model.SpecBERT(vocab=vocab, vocab_size=len(vocab.all_tokens), max_token_length = 2, embed_dimension=512, hidden_dimension=1024, n_attn_layers=12, n_attn_heads=8, lr=1e-5, weight_decay=1e-6, warmup_iters=100_000, max_iters=600_000)
+model1 = model_from_pretrained.SpecBERTUniversalComputation(vocab=vocab, vocab_size=len(vocab.all_tokens), max_token_length = 1, lr=5e-4, weight_decay=1e-5, warmup_iters=100_000, max_iters=600_000, model_name="BERT")
 
 seed_everything(42, workers=True)
 
 from pytorch_lightning import loggers as pl_loggers
 
-ts_logger = pl_loggers.TensorBoardLogger(save_dir="test-march26/")
+ts_logger = pl_loggers.TensorBoardLogger(save_dir="test-march27-BERT/")
 
 trainer = pl.Trainer(
         precision=16,
