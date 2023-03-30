@@ -1,4 +1,4 @@
-# SpecTran
+## SpecTran
 Repository for peptide and mass spectrometry MS/MS data language models.
 
 This repository provides functionality to pretrain a BERT-style masked language model to predict missing peaks in 
@@ -6,13 +6,13 @@ tandem mass spectra using a transformer encoder. It is possible to train the tra
 use a Frozen Pretrained Transformer (FPT) model (BERT or GPT2) according to "Pretrained Transformers as Universal Computation Engines"
 (https://arxiv.org/abs/2103.05247) and fine-tune only the input, output and layer norm parameters.
 
-# Dependencies
+## Dependencies
 * Numpy
 * Pytorch
 * Pytorch lightning
 * Depthcharge (https://github.com/wfondrie/depthcharge)
 
-# Vocabulary / Tokenization
+## Vocabulary / Tokenization
 
 Before training the model, it is necessary to initialize the token vocabulary of m/z values. This can be done using the generate_vocab.ipynb script. The script allows you to choose the granularity/bin width of the tokens by providing a "token_size" string.
 
@@ -37,7 +37,7 @@ train and validation, as that will be performed by the dataloader itself.
 The training process is illustrated in the scripts training_script_example_fpt_singles.py (for the model using a frozen pretrained BERT)
 and training_script_example_fromscratch_singles.py (for the model training from scratch). 
 
-# Initializing the vocabulary, tokenizer and masker 
+## Initializing the vocabulary, tokenizer and masker 
 To train a model, first you must load the vocabulary from a saved file as discussed in the section above. 
 
 The vocabulary contains all tokens from the file, indexed starting from the lowest, as well as the special tokens <pad>, <mask>, and <unk>. 
@@ -56,7 +56,7 @@ Then, create a tokenizer and masker with the appropriate parameters:
 
 * random_probability: of the tokens that are selected for masking, this percent will be replaced with a random token (the remainder after summing this and mask_probability will be kept as the original token, but still considered "masked" for the purposes of prediction)
 
-# Creating the dataloader
+## Creating the dataloader
 
 The data is loaded with modified version of several utilities provided by Casanovo (https://github.com/Noble-Lab/casanovo).
 
@@ -88,7 +88,7 @@ Then, the dataloader is created from the index with the following parameters:
 
 Note that in the current setup, the data loading utilities expect labeled spectra. However, outside of the filtering based on charge and unique peptides, the labels are not actually used. Therefore, these classes will soon be modified to also allow using unlabeled spectra.
 
-# Training the model
+## Training the model
 
 After preparing the dataloader, the model is trained using Pytorch Lightning's Trainer.
 
@@ -103,7 +103,7 @@ If training from scratch:
 * n_attn_layers
 * n_attn_heads
 
-# Logs
+## Logs
 
 The training script is configured to log to tensorboard by default, to the directory set in the script. To view the tensorboard logs on your local computer, you can ssh to the cluster as follows (assuming tensorboard is running on port 6007 on the remote server):
 
