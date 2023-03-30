@@ -25,9 +25,9 @@ Pair tokens: ((discretized_mz_1, discretized_mz_2), frequency)
 
 Note that the frequency of a single token is defined as its frequency only when occurring on its own, not when it is part of one of the top pair_token_count pair tokens.
 
-## Training the model
+# Training the model
 
-# Data
+## Data
 
 The model can be trained on any mgf file/files containing spectra. It is not necessary to split the input file into
 train and validation, as that will be performed by the dataloader itself.
