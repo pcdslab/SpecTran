@@ -40,7 +40,7 @@ and training_script_example_fromscratch_singles.py (for the model training from 
 ## Initializing the vocabulary, tokenizer and masker 
 To train a model, first you must load the vocabulary from a saved file as discussed in the section above. 
 
-The vocabulary contains all tokens from the file, indexed starting from the lowest, as well as the special tokens <pad>, <mask>, and <unk>. 
+The vocabulary contains all tokens from the file, indexed starting from the lowest, as well as the special tokens pad, mask, and unk. 
 By convention, the <pad> token is at index 0, the <mask> token is at index 1, and the <unk> token is at index 2. Indexes 3..vocabulary_size+2
 contain the "real" tokens, ordered most frequent first.
 
