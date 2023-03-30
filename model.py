@@ -53,7 +53,7 @@ class SpecBERT(pl.LightningModule):
 
         return mz_predictions, mz_softmaxes
 
-    def training_step(self, batch, batch_idx, should_log=True):
+    def training_step(self, batch, batch_idx, is_train=True):
         masked_spectra = batch[0] # 32, 108, 3
         mask_labels = batch[1] # 32, 16, 4
 
@@ -88,19 +88,25 @@ class SpecBERT(pl.LightningModule):
         mz_softmaxes = self.regular_softmax(mz_predictions)
         avg_mz_loss = self.mz_token_loss(mz_softmaxes.transpose(1, 2), masked_mz_labels.long())
 
-        # TODO eventually add intensity prediction and loss
         # intensity_predictions = self.intensity_decoder(spectra_embeddings) # torch.Size([32, 108, 2])
         # intensity_loss_result = self.intensity_loss(intensity_predictions, intensity_labels) # torch.Size([32, 108, 2]) (batch size, peak count, token length)
+        
+        if is_train:
+            percent_correct = self.calculate_percent_correct(mz_predictions, mask_labels)
 
-        if should_log:
             self.log("Train loss", avg_mz_loss,  batch_size=batch_size, on_epoch=True, sync_dist=True)
+            self.log("Train correct %", percent_correct,  batch_size=batch_size, on_epoch=True, sync_dist=True)
+        else:    
+            # validation logging
+            percent_correct = self.calculate_percent_correct(mz_predictions, mask_labels)
+
+            self.log("Val loss", avg_mz_loss,  batch_size=batch_size, on_epoch=True, sync_dist=True)
+            self.log("Val correct %", percent_correct,  batch_size=batch_size, on_epoch=True, sync_dist=True)
 
         return avg_mz_loss
 
     def validation_step(self, batch, batch_idx):
         loss = self.training_step(batch, batch_idx, False)
-
-        self.log("Val loss", loss, batch_size=len(batch[0]), on_epoch=True, sync_dist=True)
 
         return loss
 
@@ -112,6 +118,38 @@ class SpecBERT(pl.LightningModule):
             optimizer, warmup=self.warmup_iters, max_iters=self.max_iters
         )
         return [optimizer], {"scheduler": lr_scheduler, "interval": "step"}
+    
+    def calculate_percent_correct(self, mz_predictions, mask_labels):
+        predictions = 0
+        correct = 0
+
+        mz_predictions_token = torch.max(mz_predictions, dim=2)
+
+        token_predictions = mz_predictions_token[1]
+
+        masked_indices = mask_labels[:, :, 0].int()
+        mz_values = mask_labels[:, :, 1]
+
+        for spec_ix in range(len(mask_labels)):        
+            masked_peak_indices = masked_indices[spec_ix]
+            masked_mz_labels = mz_values[spec_ix]
+
+            for i in range(0, len(masked_peak_indices)):
+                index_in_spectrum = masked_peak_indices[i]
+
+                if index_in_spectrum == self.vocab.pad_token.token_index and i > 0: # TODO techincally this should be vocab.pad_token.token_index
+                    break # non-leading zeros are padding
+
+                real_mz_value = masked_mz_labels[i]
+
+                predicted_mz_value = token_predictions[spec_ix][index_in_spectrum]
+
+                predictions += 1
+
+                if real_mz_value == predicted_mz_value:
+                    correct += 1
+
+        return correct / predictions
 
 
 # from Casanovo (https://github.com/Noble-Lab/casanovo/blob/main/casanovo/denovo/model.py)
