@@ -8,8 +8,7 @@ from torch.utils.data import random_split
 import numpy as np
 import pytorch_lightning as pl
 
-from casanovo.data.datasets import AnnotatedSpectrumDataset
-from hdf5_with_filtering import AnnotatedSpectrumIndex
+from casanovo.data.datasets import SpectrumDataset
 
 class SpecBertDataModule(pl.LightningDataModule):
     def __init__(
@@ -17,7 +16,7 @@ class SpecBertDataModule(pl.LightningDataModule):
         vocabulary,
         tokenizer, 
         masker,
-        data_index: AnnotatedSpectrumIndex,
+        data_index,
         batch_size: int = 128,
         n_peaks: Optional[int] = 150,
         min_mz: float = 50.0,
@@ -48,7 +47,7 @@ class SpecBertDataModule(pl.LightningDataModule):
 
     def setup(self) -> None:
         make_dataset = functools.partial(
-            AnnotatedSpectrumDataset,
+            SpectrumDataset,
             n_peaks=self.n_peaks,
             min_mz=self.min_mz,
             max_mz=self.max_mz,
@@ -95,7 +94,6 @@ def prepare_batch(
     tokenizer,
     masker
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-
     spectra, precursor_mzs, precursor_charges, spectrum_ids = list(zip(*batch))
 
     # calculate the mean and std of all intensities in the batch, to use for normalization in the tokenizer

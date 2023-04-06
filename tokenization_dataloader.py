@@ -8,13 +8,13 @@ from torch.utils.data import random_split
 import numpy as np
 import pytorch_lightning as pl
 
-from casanovo.data.datasets import AnnotatedSpectrumDataset
-from hdf5_with_filtering import AnnotatedSpectrumIndex
+from casanovo.data.datasets import SpectrumDataset
+from hdf5_with_filtering import SpectrumIndex
 
 class TokenizerDataModule(pl.LightningDataModule):
     def __init__(
         self,
-        data_index: AnnotatedSpectrumIndex,
+        data_index: SpectrumIndex,
         batch_size: int = 128,
         n_peaks: Optional[int] = 150,
         min_mz: float = 50.0,
@@ -42,7 +42,7 @@ class TokenizerDataModule(pl.LightningDataModule):
 
     def setup(self) -> None:
         make_dataset = functools.partial(
-            AnnotatedSpectrumDataset,
+            SpectrumDataset,
             n_peaks=self.n_peaks,
             min_mz=self.min_mz,
             max_mz=self.max_mz,

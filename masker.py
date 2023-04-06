@@ -60,6 +60,11 @@ class Masker:
                 # the number of real peaks in the token to mask - we only replace a token with a token of the same size
                 original_token_length = len(torch.nonzero(original_peak[1:]))
 
+                # TODO address the root cause of this
+                if original_token_length == 0:
+                    print(f"Original token length is 0; not replacing. Original peak: {original_peak}")
+                    continue
+
                 # get a random token of the same length as the original                
                 replacement_token = self.vocab.get_random_token(original_token_length)
                 spec[index][0] = replacement_token.token_index

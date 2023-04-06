@@ -151,9 +151,6 @@ class SpecBERTUniversalComputation(pl.LightningModule):
         return [optimizer], {"scheduler": lr_scheduler, "interval": "step"}
     
     def calculate_percent_correct(self, mz_predictions, mask_labels):
-        # batch_output = saved_bert.forward(batch, 0)
-        #mz_predictions = batch_output
-
         predictions = 0
         correct = 0
 
